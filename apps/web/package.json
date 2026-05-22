@@ -16,7 +16,8 @@
     "react-dom": "19.2.6",
     "@tanstack/react-query": "5.100.11",
     "lucide-react": "1.16.0",
-    "geist": "1.7.1"
+    "geist": "1.7.1",
+    "zod": "4.4.3"
   },
   "devDependencies": {
     "@types/react": "19.2.15",
