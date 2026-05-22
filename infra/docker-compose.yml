@@ -24,7 +24,9 @@ services:
       POSTGRES_PASSWORD: helix
       POSTGRES_DB: helix
     ports:
-      - "5432:5432"
+      # Host 5433 — 5432 may be taken by a host-native Postgres. In-cluster
+      # clients still use postgres:5432 over the compose network.
+      - "5433:5432"
     volumes:
       - postgres-data:/var/lib/postgresql/data
     healthcheck:
@@ -36,7 +38,8 @@ services:
   redis:
     image: redis:7-alpine
     ports:
-      - "6379:6379"
+      # Host 6380 — 6379 may be taken by a host-native Redis.
+      - "6380:6379"
     volumes:
       - redis-data:/data
     healthcheck:
@@ -58,7 +61,8 @@ services:
       - --kafka-addr=internal://0.0.0.0:9092,external://0.0.0.0:19092
       - --advertise-kafka-addr=internal://redpanda:9092,external://localhost:19092
     ports:
-      - "19092:19092"
+      # Host 19093 — 19092 may be taken by a host-native broker.
+      - "19093:19092"
     volumes:
       - redpanda-data:/var/lib/redpanda/data
     healthcheck:

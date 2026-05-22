@@ -35,15 +35,29 @@ adding latency to the user-facing response path**.
 - For local dev outside Docker: **Node >= 22**, **pnpm 10.33.2**
   (`corepack enable && corepack prepare pnpm@10.33.2 --activate`)
 
-### One-command stack (recommended)
+### Quick start
 
 ```bash
-# 1. Provider API keys (optional — the stack starts without them)
-cp .env.example .env        # then fill ANTHROPIC_API_KEY / OPENAI_API_KEY / GOOGLE_API_KEY
+# 1. Create the env file (provider keys are optional)
+cp .env.example .env
+#    then edit .env and set the keys you have:
+#      ANTHROPIC_API_KEY=...   OPENAI_API_KEY=...   GOOGLE_API_KEY=...
+#    GOOGLE_API_KEY is the Gemini key. A provider with no key just
+#    cannot be selected for a conversation.
 
-# 2. Bring up the full stack
+# 2. Build and start the full stack
 docker compose -f infra/docker-compose.yml up --build
+
+# 3. Open the chat UI
+#      http://localhost:3000
+
+# Stop everything (add -v to also wipe the data volumes)
+docker compose -f infra/docker-compose.yml down
 ```
+
+If you change provider keys in `.env` after the stack is up, recreate
+the gateway so it reloads them: `docker compose -f infra/docker-compose.yml
+up -d api`.
 
 This starts everything with **no manual steps**. Two one-shot init
 containers run first and exit:
@@ -68,9 +82,14 @@ configured simply cannot be selected for a conversation.
 | Ingestion     | http://localhost:3002   | `/health`, `/metrics`          |
 | Grafana       | http://localhost:3003   | anonymous viewer; admin/admin  |
 | Prometheus    | http://localhost:9090   |                                |
-| Postgres      | localhost:5432          | `helix` / `helix`              |
-| Redis         | localhost:6379          |                                |
-| Redpanda      | localhost:19092         | external Kafka listener        |
+| Postgres      | localhost:5433          | `helix` / `helix`              |
+| Redis         | localhost:6380          |                                |
+| Redpanda      | localhost:19093         | external Kafka listener        |
+
+Postgres, Redis, and Redpanda are mapped to non-standard host ports
+(`5433` / `6380` / `19093`) so they do not clash with a host-native
+Postgres/Redis/broker. The Helix services reach them over the Compose
+network on their normal ports (`postgres:5432`, etc.) regardless.
 
 ### Local development (without Docker)
 
