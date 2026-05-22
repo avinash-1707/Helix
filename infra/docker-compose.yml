@@ -1,0 +1,219 @@
+# Helix — local one-run stack.
+#
+#   docker compose -f infra/docker-compose.yml up --build
+#
+# Brings up the full platform with no manual steps: Postgres (TimescaleDB),
+# Redis, Redpanda, Prometheus, Grafana, and all three Helix services.
+# Two one-shot init containers run before the services and exit:
+#   - migrate      : drizzle-kit push + TimescaleDB hypertable conversion
+#   - redpanda-init: creates the llm.inference.{logs,dlq} topics
+#
+# LLM provider API keys are read from the repo-root .env if present
+# (env_file below, required: false). Without keys the stack still starts —
+# a provider with no key simply cannot be selected for a conversation.
+
+name: helix
+
+services:
+  # --- Infrastructure -------------------------------------------------
+
+  postgres:
+    image: timescale/timescaledb:2.17.2-pg17
+    environment:
+      POSTGRES_USER: helix
+      POSTGRES_PASSWORD: helix
+      POSTGRES_DB: helix
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U helix -d helix"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli ping | grep -q PONG"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redpanda:
+    image: redpandadata/redpanda:v24.3.1
+    command:
+      - redpanda
+      - start
+      - --mode=dev-container
+      - --smp=1
+      - --memory=1G
+      # Two listeners: `internal` for in-network services, `external` for
+      # host tooling. Services connect to redpanda:9092.
+      - --kafka-addr=internal://0.0.0.0:9092,external://0.0.0.0:19092
+      - --advertise-kafka-addr=internal://redpanda:9092,external://localhost:19092
+    ports:
+      - "19092:19092"
+    volumes:
+      - redpanda-data:/var/lib/redpanda/data
+    healthcheck:
+      test: ["CMD-SHELL", "rpk cluster health | grep -qE 'Healthy:.+true'"]
+      interval: 5s
+      timeout: 5s
+      retries: 15
+
+  # --- One-shot init containers --------------------------------------
+
+  # Creates the Kafka topics. Redpanda does not auto-create topics, so the
+  # logs topic (with 24h retention) and the DLQ topic are made explicitly.
+  redpanda-init:
+    image: redpandadata/redpanda:v24.3.1
+    depends_on:
+      redpanda:
+        condition: service_healthy
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - >
+        rpk topic create llm.inference.logs
+        -X brokers=redpanda:9092 -c retention.ms=86400000 || true;
+        rpk topic create llm.inference.dlq
+        -X brokers=redpanda:9092 || true
+    restart: "no"
+
+  # Syncs the Drizzle schema and converts inference_logs to a hypertable.
+  # Runs once, then exits; the services wait on its successful completion.
+  migrate:
+    build:
+      context: ..
+      dockerfile: infra/Dockerfile.migrate
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgres://helix:helix@postgres:5432/helix
+    restart: "no"
+
+  # --- Helix services -------------------------------------------------
+
+  api:
+    build:
+      context: ..
+      dockerfile: apps/api/Dockerfile
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      redpanda:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+      redpanda-init:
+        condition: service_completed_successfully
+    env_file:
+      - path: ../.env
+        required: false
+    environment:
+      DATABASE_URL: postgres://helix:helix@postgres:5432/helix
+      REDIS_URL: redis://redis:6379
+      KAFKA_BROKERS: redpanda:9092
+      KAFKA_TOPIC_LOGS: llm.inference.logs
+      API_PORT: "3001"
+    ports:
+      - "3001:3001"
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - node -e "fetch('http://localhost:3001/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+
+  ingestion:
+    build:
+      context: ..
+      dockerfile: apps/ingestion/Dockerfile
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redpanda:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+      redpanda-init:
+        condition: service_completed_successfully
+    environment:
+      DATABASE_URL: postgres://helix:helix@postgres:5432/helix
+      KAFKA_BROKERS: redpanda:9092
+      KAFKA_TOPIC_LOGS: llm.inference.logs
+      KAFKA_TOPIC_DLQ: llm.inference.dlq
+      KAFKA_CONSUMER_GROUP: helix-ingestion
+      INGESTION_PORT: "3002"
+    ports:
+      - "3002:3002"
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - node -e "fetch('http://localhost:3002/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+
+  web:
+    build:
+      context: ..
+      dockerfile: apps/web/Dockerfile
+    depends_on:
+      api:
+        condition: service_healthy
+    environment:
+      # Server-side gateway URL — the browser never sees it (lib/server.ts).
+      HELIX_API_URL: http://api:3001
+      NODE_ENV: production
+      PORT: "3000"
+    ports:
+      - "3000:3000"
+
+  # --- Observability --------------------------------------------------
+
+  prometheus:
+    image: prom/prometheus:v3.1.0
+    depends_on:
+      - api
+      - ingestion
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus-data:/prometheus
+    ports:
+      - "9090:9090"
+
+  grafana:
+    image: grafana/grafana:11.4.0
+    depends_on:
+      - prometheus
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: admin
+      GF_AUTH_ANONYMOUS_ENABLED: "true"
+      GF_AUTH_ANONYMOUS_ORG_ROLE: Viewer
+    volumes:
+      - ./grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./grafana/dashboards:/var/lib/grafana/dashboards:ro
+      - grafana-data:/var/lib/grafana
+    # Host 3003 — 3000 is taken by web.
+    ports:
+      - "3003:3000"
+
+volumes:
+  postgres-data:
+  redis-data:
+  redpanda-data:
+  prometheus-data:
+  grafana-data:

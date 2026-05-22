@@ -1,0 +1,31 @@
+# Helix schema migrator — a one-shot container that runs once on stack up.
+# Build context is the monorepo root (see docker-compose.yml).
+#
+# Two steps, in order:
+#   1. `drizzle-kit push` — syncs the Drizzle schema (packages/db) to
+#      Postgres. No migration files; push is the source of truth.
+#   2. `psql -f sql/hypertable.sql` — converts inference_logs into a
+#      TimescaleDB hypertable. drizzle-kit cannot express this; the SQL
+#      is idempotent and must run after push has created the base table.
+#
+# Needs both a Node toolchain (drizzle-kit) and psql, hence postgresql-client.
+FROM node:22-slim
+
+RUN apt-get update \
+  && apt-get install -y --no-install-recommends postgresql-client \
+  && rm -rf /var/lib/apt/lists/*
+
+RUN corepack enable && corepack prepare pnpm@10.33.2 --activate
+
+WORKDIR /app
+
+COPY . .
+
+RUN pnpm install --frozen-lockfile
+
+WORKDIR /app/packages/db
+
+# DATABASE_URL is supplied by docker-compose at run time.
+# push applies safe CREATE DDL non-interactively against the fresh DB;
+# psql then runs the idempotent hypertable conversion.
+CMD ["sh", "-c", "pnpm exec drizzle-kit push && psql \"$DATABASE_URL\" -v ON_ERROR_STOP=1 -f sql/hypertable.sql"]

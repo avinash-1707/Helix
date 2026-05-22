@@ -1,0 +1,8 @@
+# Keep build contexts small and host-only artifacts out of images.
+**/node_modules
+**/dist
+**/.next
+**/.turbo
+.git
+.env
+*.log
