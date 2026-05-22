@@ -1,0 +1,25 @@
+{
+  "name": "helix",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Helix — full-stack LLM observability platform",
+  "packageManager": "pnpm@10.33.2",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "build": "turbo build",
+    "dev": "turbo dev",
+    "lint": "turbo lint",
+    "typecheck": "turbo typecheck",
+    "test": "turbo test"
+  },
+  "devDependencies": {
+    "turbo": "2.9.14",
+    "typescript": "6.0.3",
+    "@types/node": "25.9.1"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": ["esbuild", "sharp", "@google/genai", "protobufjs"]
+  }
+}
