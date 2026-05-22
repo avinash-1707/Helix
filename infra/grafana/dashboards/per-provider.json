@@ -1,0 +1,122 @@
+{
+  "uid": "helix-per-provider",
+  "title": "Helix — Per-Provider",
+  "tags": ["helix"],
+  "timezone": "browser",
+  "schemaVersion": 39,
+  "version": 1,
+  "refresh": "10s",
+  "time": { "from": "now-6h", "to": "now" },
+  "templating": {
+    "list": [
+      {
+        "name": "provider",
+        "label": "Provider",
+        "type": "query",
+        "datasource": { "type": "grafana-postgresql-datasource", "uid": "helix-postgres" },
+        "query": "SELECT DISTINCT provider FROM inference_logs ORDER BY 1",
+        "includeAll": true,
+        "multi": true,
+        "refresh": 2
+      }
+    ]
+  },
+  "panels": [
+    {
+      "id": 1,
+      "type": "timeseries",
+      "title": "p95 Latency by Provider",
+      "gridPos": { "x": 0, "y": 0, "w": 12, "h": 8 },
+      "fieldConfig": { "defaults": { "unit": "ms" }, "overrides": [] },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": { "type": "grafana-postgresql-datasource", "uid": "helix-postgres" },
+          "format": "time_series",
+          "rawQuery": true,
+          "rawSql": "SELECT $__timeGroupAlias(request_at, $__interval), provider, percentile_cont(0.95) WITHIN GROUP (ORDER BY latency_ms) AS p95 FROM inference_logs WHERE $__timeFilter(request_at) AND status = 'success' AND provider IN ($provider) GROUP BY 1, provider ORDER BY 1"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "type": "timeseries",
+      "title": "p99 Latency by Provider",
+      "gridPos": { "x": 12, "y": 0, "w": 12, "h": 8 },
+      "fieldConfig": { "defaults": { "unit": "ms" }, "overrides": [] },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": { "type": "grafana-postgresql-datasource", "uid": "helix-postgres" },
+          "format": "time_series",
+          "rawQuery": true,
+          "rawSql": "SELECT $__timeGroupAlias(request_at, $__interval), provider, percentile_cont(0.99) WITHIN GROUP (ORDER BY latency_ms) AS p99 FROM inference_logs WHERE $__timeFilter(request_at) AND status = 'success' AND provider IN ($provider) GROUP BY 1, provider ORDER BY 1"
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "type": "timeseries",
+      "title": "Call Volume by Provider",
+      "gridPos": { "x": 0, "y": 8, "w": 12, "h": 8 },
+      "fieldConfig": { "defaults": { "unit": "short" }, "overrides": [] },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": { "type": "grafana-postgresql-datasource", "uid": "helix-postgres" },
+          "format": "time_series",
+          "rawQuery": true,
+          "rawSql": "SELECT $__timeGroupAlias(request_at, $__interval), provider, count(*) AS calls FROM inference_logs WHERE $__timeFilter(request_at) AND provider IN ($provider) GROUP BY 1, provider ORDER BY 1"
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "type": "timeseries",
+      "title": "Token Usage by Provider (total)",
+      "gridPos": { "x": 12, "y": 8, "w": 12, "h": 8 },
+      "fieldConfig": { "defaults": { "unit": "short" }, "overrides": [] },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": { "type": "grafana-postgresql-datasource", "uid": "helix-postgres" },
+          "format": "time_series",
+          "rawQuery": true,
+          "rawSql": "SELECT $__timeGroupAlias(request_at, $__interval), provider, sum(coalesce(prompt_tokens, 0) + coalesce(completion_tokens, 0)) AS tokens FROM inference_logs WHERE $__timeFilter(request_at) AND provider IN ($provider) GROUP BY 1, provider ORDER BY 1"
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "type": "timeseries",
+      "title": "Errors by Provider",
+      "gridPos": { "x": 0, "y": 16, "w": 12, "h": 8 },
+      "fieldConfig": { "defaults": { "unit": "short" }, "overrides": [] },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": { "type": "grafana-postgresql-datasource", "uid": "helix-postgres" },
+          "format": "time_series",
+          "rawQuery": true,
+          "rawSql": "SELECT $__timeGroupAlias(request_at, $__interval), provider, count(*) FILTER (WHERE status = 'error') AS errors FROM inference_logs WHERE $__timeFilter(request_at) AND provider IN ($provider) GROUP BY 1, provider ORDER BY 1"
+        }
+      ]
+    },
+    {
+      "id": 6,
+      "type": "timeseries",
+      "title": "p95 First-Token Latency by Provider",
+      "gridPos": { "x": 12, "y": 16, "w": 12, "h": 8 },
+      "fieldConfig": { "defaults": { "unit": "ms" }, "overrides": [] },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": { "type": "grafana-postgresql-datasource", "uid": "helix-postgres" },
+          "format": "time_series",
+          "rawQuery": true,
+          "rawSql": "SELECT $__timeGroupAlias(request_at, $__interval), provider, percentile_cont(0.95) WITHIN GROUP (ORDER BY first_token_ms) AS p95_first_token FROM inference_logs WHERE $__timeFilter(request_at) AND first_token_ms IS NOT NULL AND provider IN ($provider) GROUP BY 1, provider ORDER BY 1"
+        }
+      ]
+    }
+  ]
+}

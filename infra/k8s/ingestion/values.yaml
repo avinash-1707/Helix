@@ -1,0 +1,36 @@
+replicaCount: 2
+
+image:
+  # Push the apps/ingestion image here (e.g. ECR). Tag per release.
+  repository: helix/ingestion
+  tag: "0.0.0"
+  pullPolicy: IfNotPresent
+
+service:
+  port: 3002
+
+config:
+  kafkaBrokers: redpanda:9092
+  kafkaTopicLogs: llm.inference.logs
+  kafkaTopicDlq: llm.inference.dlq
+  # All replicas share one consumer group — Redpanda spreads the topic
+  # partitions across them.
+  kafkaConsumerGroup: helix-ingestion
+
+secrets:
+  databaseUrl: postgres://helix:helix@postgres:5432/helix
+
+resources:
+  requests:
+    cpu: 200m
+    memory: 256Mi
+  limits:
+    cpu: 750m
+    memory: 512Mi
+
+autoscaling:
+  enabled: true
+  minReplicas: 2
+  # Cap at the logs-topic partition count — extra consumers would idle.
+  maxReplicas: 3
+  targetCPUUtilizationPercentage: 75

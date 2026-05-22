@@ -1,0 +1,6 @@
+apiVersion: v2
+name: helix-ingestion
+description: Helix ingestion service — Kafka consumer that writes inference logs.
+type: application
+version: 0.1.0
+appVersion: "0.0.0"

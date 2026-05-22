@@ -1,0 +1,14 @@
+# Non-secret runtime config. Validated at startup by the Zod schema in
+# apps/ingestion/src/config.ts.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: ingestion-config
+  labels:
+    app: ingestion
+data:
+  KAFKA_BROKERS: {{ .Values.config.kafkaBrokers | quote }}
+  KAFKA_TOPIC_LOGS: {{ .Values.config.kafkaTopicLogs | quote }}
+  KAFKA_TOPIC_DLQ: {{ .Values.config.kafkaTopicDlq | quote }}
+  KAFKA_CONSUMER_GROUP: {{ .Values.config.kafkaConsumerGroup | quote }}
+  INGESTION_PORT: {{ .Values.service.port | quote }}

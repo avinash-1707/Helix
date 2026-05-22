@@ -1,0 +1,6 @@
+apiVersion: v2
+name: helix-api
+description: Helix API gateway — conversation CRUD, SSE streaming, log emit.
+type: application
+version: 0.1.0
+appVersion: "0.0.0"

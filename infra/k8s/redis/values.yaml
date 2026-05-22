@@ -1,0 +1,19 @@
+image:
+  repository: redis
+  tag: "7-alpine"
+  pullPolicy: IfNotPresent
+
+persistence:
+  # Redis holds only ephemeral state (context cache TTL 24h, rate-limit
+  # counters). A small volume keeps it across pod restarts; losing it just
+  # forces cold-cache DB fallbacks — not data loss.
+  size: 5Gi
+  storageClass: gp3
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 256Mi
+  limits:
+    cpu: 500m
+    memory: 512Mi

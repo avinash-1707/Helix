@@ -1,0 +1,31 @@
+# Schema migration — drizzle-kit push + the TimescaleDB hypertable SQL.
+# Helm pre-install/pre-upgrade hook: runs (and must succeed) before the
+# api Deployment rolls. backoffLimit covers Postgres not being ready yet.
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: api-migrate
+  labels:
+    app: api
+  annotations:
+    "helm.sh/hook": pre-install,pre-upgrade
+    "helm.sh/hook-weight": "-5"
+    "helm.sh/hook-delete-policy": before-hook-creation,hook-succeeded
+spec:
+  backoffLimit: 10
+  template:
+    metadata:
+      labels:
+        app: api
+        component: migrate
+    spec:
+      restartPolicy: OnFailure
+      containers:
+        - name: migrate
+          image: "{{ .Values.migrate.image.repository }}:{{ .Values.migrate.image.tag }}"
+          env:
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: api-secrets
+                  key: DATABASE_URL

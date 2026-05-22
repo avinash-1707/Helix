@@ -1,0 +1,17 @@
+# Non-secret runtime config for the api gateway. All keys are validated
+# at startup by the Zod schema in apps/api/src/config.ts.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: api-config
+  labels:
+    app: api
+data:
+  REDIS_URL: {{ .Values.config.redisUrl | quote }}
+  KAFKA_BROKERS: {{ .Values.config.kafkaBrokers | quote }}
+  KAFKA_TOPIC_LOGS: {{ .Values.config.kafkaTopicLogs | quote }}
+  API_PORT: {{ .Values.service.port | quote }}
+  CONTEXT_WINDOW_SIZE: {{ .Values.config.contextWindowSize | quote }}
+  RATE_LIMIT_MAX: {{ .Values.config.rateLimitMax | quote }}
+  RATE_LIMIT_WINDOW_SEC: {{ .Values.config.rateLimitWindowSec | quote }}
+  LLM_REQUEST_TIMEOUT_MS: {{ .Values.config.llmRequestTimeoutMs | quote }}

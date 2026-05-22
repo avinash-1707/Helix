@@ -1,0 +1,6 @@
+apiVersion: v2
+name: helix-postgres
+description: PostgreSQL with the TimescaleDB extension — persistent store for Helix.
+type: application
+version: 0.1.0
+appVersion: "17"

@@ -1,0 +1,37 @@
+# One-shot topic creation. Redpanda does not auto-create topics, so the
+# logs topic (24h retention) and the DLQ topic are made explicitly.
+# Helm post-install/post-upgrade hook — runs after the broker is up.
+# `|| true`-guarded so re-running on an existing cluster is a no-op.
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: redpanda-topic-init
+  labels:
+    app: redpanda
+  annotations:
+    "helm.sh/hook": post-install,post-upgrade
+    "helm.sh/hook-weight": "0"
+    "helm.sh/hook-delete-policy": before-hook-creation,hook-succeeded
+spec:
+  backoffLimit: 6
+  template:
+    metadata:
+      labels:
+        app: redpanda
+        component: topic-init
+    spec:
+      restartPolicy: OnFailure
+      containers:
+        - name: topic-init
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          command:
+            - /bin/sh
+            - -c
+            - >
+              rpk topic create {{ .Values.topics.logs.name }}
+              -X brokers=redpanda:9092
+              -p {{ .Values.topics.logs.partitions }}
+              -c retention.ms={{ .Values.topics.logs.retentionMs }} || true;
+              rpk topic create {{ .Values.topics.dlq.name }}
+              -X brokers=redpanda:9092
+              -p {{ .Values.topics.dlq.partitions }} || true

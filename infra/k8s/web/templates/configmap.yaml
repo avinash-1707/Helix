@@ -1,0 +1,12 @@
+# Runtime config for the Next.js server. No secrets — the frontend holds
+# no credentials; provider keys live only in the api gateway.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: web-config
+  labels:
+    app: web
+data:
+  HELIX_API_URL: {{ .Values.config.helixApiUrl | quote }}
+  NODE_ENV: production
+  PORT: {{ .Values.service.port | quote }}

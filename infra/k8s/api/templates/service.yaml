@@ -1,0 +1,16 @@
+# ClusterIP — stable DNS `api` for the web frontend's server-side proxy
+# and for Prometheus scraping (/metrics).
+apiVersion: v1
+kind: Service
+metadata:
+  name: api
+  labels:
+    app: api
+spec:
+  type: ClusterIP
+  selector:
+    app: api
+  ports:
+    - name: http
+      port: {{ .Values.service.port }}
+      targetPort: http

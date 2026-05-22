@@ -1,0 +1,26 @@
+image:
+  repository: redpandadata/redpanda
+  tag: "v24.3.1"
+  pullPolicy: IfNotPresent
+
+persistence:
+  size: 20Gi
+  storageClass: gp3
+
+resources:
+  requests:
+    cpu: 500m
+    memory: 1Gi
+  limits:
+    cpu: "2"
+    memory: 2Gi
+
+topics:
+  logs:
+    name: llm.inference.logs
+    partitions: 3
+    # 24h retention (architecture.md). Tune per ingestion throughput.
+    retentionMs: 86400000
+  dlq:
+    name: llm.inference.dlq
+    partitions: 1

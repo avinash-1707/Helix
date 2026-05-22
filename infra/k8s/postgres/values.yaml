@@ -1,0 +1,24 @@
+image:
+  repository: timescale/timescaledb
+  tag: "2.17.2-pg17"
+  pullPolicy: IfNotPresent
+
+# Credentials. Override the password per environment — do NOT ship this
+# default to a real cluster (use --set or a sealed/external secret).
+auth:
+  username: helix
+  password: helix
+  database: helix
+
+persistence:
+  size: 20Gi
+  # EKS gp3 storage class. Adjust to the cluster's default if different.
+  storageClass: gp3
+
+resources:
+  requests:
+    cpu: 250m
+    memory: 512Mi
+  limits:
+    cpu: "1"
+    memory: 1Gi

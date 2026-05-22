@@ -115,7 +115,7 @@ packages.
 │   └── types/       # Shared Zod schemas + inferred TypeScript types
 └── infra/
     ├── docker-compose.yml   # local one-run stack
-    ├── k8s/                 # Helm charts for EKS (planned)
+    ├── k8s/                 # Helm charts for EKS (one per service)
     └── grafana/             # dashboards + provisioning
 ```
 
@@ -322,10 +322,16 @@ Grafana reflects new calls within seconds of the DB write.
   `drizzle-kit push` for any non-local environment.
 - **Durable log delivery** — a local disk spool or outbox so a Kafka
   outage delays rather than drops observability data.
-- **Finish the EKS deployment** — Helm charts (`infra/k8s/`), Traefik
-  ingress, cert-manager + Let's Encrypt for HTTPS, autoscaling.
-- **Grafana dashboards** — ship the Overview / Per-Provider /
-  Per-Conversation dashboards as committed JSON now that metrics flow.
+- **Verify the EKS deployment end to end** — the Helm charts
+  (`infra/k8s/`) are written but not yet applied to a live cluster;
+  `helm lint`/`helm template` and a real `helm install` need a pass.
+- **HA data stores on EKS** — the `postgres`/`redis`/`redpanda` charts are
+  single-node StatefulSets; move to managed RDS / ElastiCache / MSK.
+- **Verify the Grafana dashboards** against a live stack — the JSON is
+  committed (`infra/grafana/dashboards/`) but not yet confirmed with
+  metrics actually flowing.
+- **KEDA lag-based ingestion autoscaling** — the current HPA scales on
+  CPU; a Kafka consumer-lag trigger would scale on the real signal.
 - **Authentication and a per-user ownership model**, so conversations
   are scoped rather than globally visible.
 - **End-to-end and integration tests** — currently only `types` and `sdk`

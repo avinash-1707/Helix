@@ -1,0 +1,6 @@
+apiVersion: v2
+name: helix-web
+description: Helix web frontend — Next.js chat UI and same-origin API proxy.
+type: application
+version: 0.1.0
+appVersion: "0.0.0"

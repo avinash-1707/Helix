@@ -1,0 +1,144 @@
+{
+  "uid": "helix-per-conversation",
+  "title": "Helix — Per-Conversation",
+  "tags": ["helix"],
+  "timezone": "browser",
+  "schemaVersion": 39,
+  "version": 1,
+  "refresh": "10s",
+  "time": { "from": "now-24h", "to": "now" },
+  "templating": {
+    "list": [
+      {
+        "name": "conversation_id",
+        "label": "Conversation ID",
+        "type": "textbox",
+        "query": "",
+        "current": { "text": "", "value": "" }
+      }
+    ]
+  },
+  "panels": [
+    {
+      "id": 1,
+      "type": "stat",
+      "title": "LLM Calls",
+      "gridPos": { "x": 0, "y": 0, "w": 6, "h": 4 },
+      "fieldConfig": { "defaults": { "unit": "short" }, "overrides": [] },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": { "type": "grafana-postgresql-datasource", "uid": "helix-postgres" },
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT count(*) AS calls FROM inference_logs WHERE conversation_id = '$conversation_id'"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "type": "stat",
+      "title": "Total Tokens",
+      "gridPos": { "x": 6, "y": 0, "w": 6, "h": 4 },
+      "fieldConfig": { "defaults": { "unit": "short" }, "overrides": [] },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": { "type": "grafana-postgresql-datasource", "uid": "helix-postgres" },
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT sum(coalesce(prompt_tokens, 0) + coalesce(completion_tokens, 0)) AS tokens FROM inference_logs WHERE conversation_id = '$conversation_id'"
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "type": "stat",
+      "title": "Errors",
+      "gridPos": { "x": 12, "y": 0, "w": 6, "h": 4 },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "thresholds": { "mode": "absolute", "steps": [
+            { "color": "green", "value": null },
+            { "color": "red", "value": 1 }
+          ] }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": { "type": "grafana-postgresql-datasource", "uid": "helix-postgres" },
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT count(*) FILTER (WHERE status = 'error') AS errors FROM inference_logs WHERE conversation_id = '$conversation_id'"
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "type": "stat",
+      "title": "Avg Latency",
+      "gridPos": { "x": 18, "y": 0, "w": 6, "h": 4 },
+      "fieldConfig": { "defaults": { "unit": "ms" }, "overrides": [] },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": { "type": "grafana-postgresql-datasource", "uid": "helix-postgres" },
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT avg(latency_ms) AS avg_latency FROM inference_logs WHERE conversation_id = '$conversation_id' AND status = 'success'"
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "type": "timeseries",
+      "title": "Latency per Call",
+      "gridPos": { "x": 0, "y": 4, "w": 24, "h": 8 },
+      "fieldConfig": { "defaults": { "unit": "ms" }, "overrides": [] },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": { "type": "grafana-postgresql-datasource", "uid": "helix-postgres" },
+          "format": "time_series",
+          "rawQuery": true,
+          "rawSql": "SELECT request_at AS time, latency_ms, first_token_ms FROM inference_logs WHERE conversation_id = '$conversation_id' ORDER BY request_at"
+        }
+      ]
+    },
+    {
+      "id": 6,
+      "type": "table",
+      "title": "Inference Calls",
+      "gridPos": { "x": 0, "y": 12, "w": 24, "h": 9 },
+      "fieldConfig": { "defaults": {}, "overrides": [] },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": { "type": "grafana-postgresql-datasource", "uid": "helix-postgres" },
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT request_at, provider, model, status, error_code, latency_ms, first_token_ms, prompt_tokens, completion_tokens FROM inference_logs WHERE conversation_id = '$conversation_id' ORDER BY request_at DESC"
+        }
+      ]
+    },
+    {
+      "id": 7,
+      "type": "table",
+      "title": "Messages (PII-redacted previews)",
+      "gridPos": { "x": 0, "y": 21, "w": 24, "h": 9 },
+      "fieldConfig": { "defaults": {}, "overrides": [] },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": { "type": "grafana-postgresql-datasource", "uid": "helix-postgres" },
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT created_at, role, content_preview FROM messages WHERE conversation_id = '$conversation_id' ORDER BY created_at"
+        }
+      ]
+    }
+  ]
+}

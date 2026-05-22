@@ -1,0 +1,48 @@
+replicaCount: 2
+
+image:
+  # Push the apps/api image here (e.g. ECR). Tag per release — avoid :latest.
+  repository: helix/api
+  tag: "0.0.0"
+  pullPolicy: IfNotPresent
+
+migrate:
+  # The infra/Dockerfile.migrate image. Runs drizzle-kit push + hypertable
+  # SQL as a Helm pre-install/pre-upgrade hook.
+  image:
+    repository: helix/migrate
+    tag: "0.0.0"
+
+service:
+  port: 3001
+
+# Non-secret runtime config → ConfigMap.
+config:
+  redisUrl: redis://redis:6379
+  kafkaBrokers: redpanda:9092
+  kafkaTopicLogs: llm.inference.logs
+  contextWindowSize: "10"
+  rateLimitMax: "30"
+  rateLimitWindowSec: "60"
+  llmRequestTimeoutMs: "60000"
+
+# Secret values → Secret. Override every one of these per environment.
+secrets:
+  databaseUrl: postgres://helix:helix@postgres:5432/helix
+  anthropicApiKey: ""
+  openaiApiKey: ""
+  googleApiKey: ""
+
+resources:
+  requests:
+    cpu: 250m
+    memory: 256Mi
+  limits:
+    cpu: "1"
+    memory: 512Mi
+
+autoscaling:
+  enabled: true
+  minReplicas: 2
+  maxReplicas: 6
+  targetCPUUtilizationPercentage: 70

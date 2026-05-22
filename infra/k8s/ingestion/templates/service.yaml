@@ -1,0 +1,16 @@
+# ClusterIP — exposes /metrics and /health only. Not reachable from the
+# frontend (architecture.md boundary); used by Prometheus and probes.
+apiVersion: v1
+kind: Service
+metadata:
+  name: ingestion
+  labels:
+    app: ingestion
+spec:
+  type: ClusterIP
+  selector:
+    app: ingestion
+  ports:
+    - name: http
+      port: {{ .Values.service.port }}
+      targetPort: http

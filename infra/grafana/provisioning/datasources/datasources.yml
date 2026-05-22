@@ -1,0 +1,33 @@
+# Auto-provisioned Grafana datasources for the local Helix stack.
+#
+# Two sources, by design:
+#  - Prometheus  → operational/pipeline metrics (HTTP rates, ingestion
+#    consume/write/DLQ counters). Scraped from api + ingestion /metrics.
+#  - PostgreSQL  → analytical metrics straight off the inference_logs
+#    hypertable (per-provider / per-conversation latency, tokens, errors).
+#    Prometheus carries no provider/conversation labels, so the breakdown
+#    dashboards query the table directly.
+apiVersion: 1
+
+datasources:
+  - name: Prometheus
+    uid: helix-prometheus
+    type: prometheus
+    access: proxy
+    url: http://prometheus:9090
+    isDefault: true
+    editable: false
+
+  - name: Helix PostgreSQL
+    uid: helix-postgres
+    type: grafana-postgresql-datasource
+    access: proxy
+    url: postgres:5432
+    user: helix
+    jsonData:
+      database: helix
+      sslmode: disable
+      timescaledb: true
+    secureJsonData:
+      password: helix
+    editable: false
