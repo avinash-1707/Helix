@@ -1,8 +1,8 @@
-import { Workspace } from "@/components/workspace";
+import { Landing } from "@/components/landing/landing";
 
-// The whole experience is one client workspace: a conversation rail and
-// a chat surface. Rendered from a thin server route so the document shell
-// and fonts stream first.
+// The marketing surface. A static server component — every animation is
+// CSS-driven, so the page ships no client JavaScript. The product itself
+// lives at /chat.
 export default function Page() {
-  return <Workspace />;
+  return <Landing />;
 }

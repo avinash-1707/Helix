@@ -2,46 +2,46 @@
 
 /* ============================================================
    Helix — design system
-   Aesthetic: warm editorial dark. Near-black paper, cream ink,
-   a single vermilion accent. Serif display against a clean
-   grotesque body and a precise mono for metadata.
+   Aesthetic: telemetry control surface. Cool charcoal, an acid
+   signal-lime accent, a monospace-forward technical voice. Sharp
+   and instrument-like — the inverse of a soft editorial reader.
    ============================================================ */
 
 @theme {
-  /* Surfaces — warm, low-chroma blacks layered for depth */
-  --color-bg: #14120d;
-  --color-bg-elev: #1a1711;
-  --color-surface: #201c15;
-  --color-surface-hi: #29241b;
-  --color-border: #322c20;
-  --color-border-hi: #463e2d;
+  /* Surfaces — cool, near-black charcoal layered for depth */
+  --color-bg: #0a0c0f;
+  --color-bg-elev: #0f1216;
+  --color-surface: #14181d;
+  --color-surface-hi: #1c2229;
+  --color-border: #232a32;
+  --color-border-hi: #354049;
 
   /* Ink */
-  --color-ink: #ece5d4;
-  --color-ink-dim: #9c9484;
-  --color-ink-faint: #6a6453;
+  --color-ink: #e8edf1;
+  --color-ink-dim: #8b96a0;
+  --color-ink-faint: #565f68;
 
-  /* Accent — vermilion */
-  --color-accent: #e9683c;
-  --color-accent-hi: #f5825a;
-  --color-accent-deep: #b94d28;
+  /* Accent — acid signal lime */
+  --color-accent: #c3f53c;
+  --color-accent-hi: #d6ff63;
+  --color-accent-deep: #93bf2b;
 
   /* Per-assistant hues (used sparingly as identity dots) */
-  --color-claude: #e08a4e;
-  --color-gpt: #58b394;
-  --color-gemini: #6695d0;
+  --color-claude: #e0894e;
+  --color-gpt: #4ec9a8;
+  --color-gemini: #6f9ce0;
 
-  --color-danger: #df6a5f;
-  --color-positive: #58b394;
+  --color-danger: #f06a5d;
+  --color-positive: #4ec9a8;
 
-  --font-display: var(--font-instrument), ui-serif, Georgia, serif;
-  --font-sans: var(--font-hanken), ui-sans-serif, system-ui, sans-serif;
-  --font-mono: var(--font-jetbrains), ui-monospace, SFMono-Regular, monospace;
+  --font-display: var(--font-bricolage), ui-sans-serif, system-ui, sans-serif;
+  --font-sans: var(--font-plex), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-plex-mono), ui-monospace, SFMono-Regular, monospace;
 
-  --radius-xs: 6px;
-  --radius-sm: 10px;
-  --radius-md: 14px;
-  --radius-lg: 20px;
+  --radius-xs: 5px;
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 18px;
 }
 
 /* ---- base ------------------------------------------------- */
@@ -61,17 +61,17 @@ body {
   font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
-  /* Atmospheric glow — a warm light leaking from the top-left,
-     plus a faint paper grain so flat areas never feel dead. */
+  /* Atmospheric glow — a cool signal cast leaking in from two
+     corners so flat charcoal never reads as dead. */
   background-image:
     radial-gradient(
-      900px 600px at 12% -8%,
-      rgba(233, 104, 60, 0.1),
+      900px 620px at 14% -10%,
+      rgba(195, 245, 60, 0.07),
       transparent 70%
     ),
     radial-gradient(
-      700px 500px at 100% 110%,
-      rgba(102, 149, 208, 0.06),
+      760px 520px at 102% 108%,
+      rgba(78, 201, 168, 0.06),
       transparent 70%
     );
   background-attachment: fixed;
@@ -79,7 +79,7 @@ body {
 
 ::selection {
   background: var(--color-accent);
-  color: #1a1206;
+  color: #0a0c0f;
 }
 
 /* ---- scrollbar -------------------------------------------- */
@@ -112,7 +112,7 @@ body {
 }
 
 /* ============================================================
-   Motion
+   Motion — application chrome
    ============================================================ */
 
 @keyframes rise {
@@ -225,6 +225,114 @@ body {
   animation: spin 0.7s linear infinite;
 }
 
+/* ============================================================
+   Motion — landing page
+   ============================================================ */
+
+@keyframes lp-reveal {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Vertical loop for the telemetry log feed (list rendered twice). */
+@keyframes lp-drift {
+  from {
+    transform: translateY(0);
+  }
+  to {
+    transform: translateY(-50%);
+  }
+}
+
+/* One-shot stroke draw for the sparkline. */
+@keyframes lp-dash {
+  from {
+    stroke-dashoffset: 1600;
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+/* Live-status indicator pulse. */
+@keyframes lp-pulse {
+  0%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.3;
+    transform: scale(0.7);
+  }
+}
+
+/* Horizontal loop for the provider ticker (list rendered twice). */
+@keyframes lp-ticker {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+/* Scanline sweep across the console card. */
+@keyframes lp-sweep {
+  0% {
+    transform: translateY(-100%);
+  }
+  100% {
+    transform: translateY(2400%);
+  }
+}
+
+.lp-reveal {
+  animation: lp-reveal 0.85s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+/* Telemetry grid — drawn on an absolutely positioned layer and
+   masked so it dissolves toward the edges. */
+.lp-grid {
+  background-image:
+    linear-gradient(var(--color-border-hi) 1px, transparent 1px),
+    linear-gradient(90deg, var(--color-border-hi) 1px, transparent 1px);
+  background-size: 58px 58px;
+  -webkit-mask-image: radial-gradient(
+    ellipse 70% 60% at 50% 38%,
+    #000 0%,
+    transparent 78%
+  );
+  mask-image: radial-gradient(
+    ellipse 70% 60% at 50% 38%,
+    #000 0%,
+    transparent 78%
+  );
+}
+
+.lp-feed {
+  animation: lp-drift 22s linear infinite;
+}
+.lp-spark {
+  stroke-dasharray: 1600;
+  animation: lp-dash 3.4s ease-out forwards;
+}
+.lp-pulse {
+  animation: lp-pulse 1.7s ease-in-out infinite;
+}
+.lp-ticker {
+  animation: lp-ticker 38s linear infinite;
+}
+.lp-sweep {
+  animation: lp-sweep 7s linear infinite;
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
@@ -236,5 +344,8 @@ body {
   .caret::after {
     animation: none;
     opacity: 1;
+  }
+  .lp-spark {
+    stroke-dasharray: none;
   }
 }
