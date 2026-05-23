@@ -1,36 +1,17 @@
 "use client";
 
-// One message. Content is rendered as plain text (with fenced code blocks
-// detected) — never as HTML, so nothing in a reply can inject markup.
+// One message. Assistant replies render Markdown (GFM) via react-markdown
+// — safe by default (no rawHtml), so reply content cannot inject markup.
+// User messages stay plain text.
 
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { Check, Copy } from "lucide-react";
+import ReactMarkdown, { type Components } from "react-markdown";
+import remarkGfm from "remark-gfm";
 import type { MessageRole } from "@helix/types";
 import { clockTime } from "@/lib/format";
 import { ModelDot } from "../model";
 import { modelInfo } from "@/lib/models";
-
-type Segment =
-  | { kind: "text"; value: string }
-  | { kind: "code"; value: string };
-
-// Splits on triple-backtick fences. An unclosed fence (mid-stream) simply
-// stays text until its closing fence arrives.
-function toSegments(text: string): Segment[] {
-  const out: Segment[] = [];
-  const fence = /```[\w-]*\n?([\s\S]*?)```/g;
-  let last = 0;
-  let m: RegExpExecArray | null;
-  while ((m = fence.exec(text)) !== null) {
-    if (m.index > last) {
-      out.push({ kind: "text", value: text.slice(last, m.index) });
-    }
-    out.push({ kind: "code", value: (m[1] ?? "").replace(/\n$/, "") });
-    last = fence.lastIndex;
-  }
-  if (last < text.length) out.push({ kind: "text", value: text.slice(last) });
-  return out;
-}
 
 function CopyButton({ text }: { text: string }) {
   const [copied, setCopied] = useState(false);
@@ -58,6 +39,115 @@ function CopyButton({ text }: { text: string }) {
   );
 }
 
+function CodeBlock({ children }: { children: ReactNode }) {
+  // Extract raw text for the copy affordance.
+  const raw =
+    typeof children === "string"
+      ? children
+      : Array.isArray(children)
+        ? children.join("")
+        : String(children ?? "");
+  return (
+    <div className="group/code relative my-3">
+      <pre className="overflow-x-auto rounded-md border border-border bg-bg px-3.5 py-3 font-mono text-[13px] leading-relaxed text-ink">
+        <code>{children}</code>
+      </pre>
+      <div className="absolute right-1.5 top-1.5 opacity-0 transition-opacity group-hover/code:opacity-100">
+        <CopyButton text={raw} />
+      </div>
+    </div>
+  );
+}
+
+// Markdown → Tailwind-styled elements. Anchor opens external links safely.
+const mdComponents: Components = {
+  p: ({ children }) => (
+    <p className="text-[15px] leading-[1.7] [&:not(:last-child)]:mb-3">
+      {children}
+    </p>
+  ),
+  a: ({ children, href }) => (
+    <a
+      href={href}
+      target="_blank"
+      rel="noreferrer noopener"
+      className="text-accent underline decoration-accent/40 underline-offset-2 transition-colors hover:decoration-accent"
+    >
+      {children}
+    </a>
+  ),
+  strong: ({ children }) => (
+    <strong className="font-semibold text-ink">{children}</strong>
+  ),
+  em: ({ children }) => <em className="italic">{children}</em>,
+  del: ({ children }) => (
+    <del className="text-ink-dim line-through">{children}</del>
+  ),
+  ul: ({ children }) => (
+    <ul className="my-3 list-disc space-y-1 pl-5 text-[15px] leading-[1.7] marker:text-ink-faint">
+      {children}
+    </ul>
+  ),
+  ol: ({ children }) => (
+    <ol className="my-3 list-decimal space-y-1 pl-5 text-[15px] leading-[1.7] marker:text-ink-faint">
+      {children}
+    </ol>
+  ),
+  li: ({ children }) => <li className="pl-1">{children}</li>,
+  blockquote: ({ children }) => (
+    <blockquote className="my-3 border-l-2 border-accent/50 pl-3.5 italic text-ink-dim">
+      {children}
+    </blockquote>
+  ),
+  h1: ({ children }) => (
+    <h1 className="mb-2 mt-4 font-display text-[22px] font-medium leading-tight tracking-tight text-ink">
+      {children}
+    </h1>
+  ),
+  h2: ({ children }) => (
+    <h2 className="mb-2 mt-4 font-display text-[19px] font-medium leading-tight tracking-tight text-ink">
+      {children}
+    </h2>
+  ),
+  h3: ({ children }) => (
+    <h3 className="mb-1.5 mt-3 font-display text-[16.5px] font-medium leading-tight text-ink">
+      {children}
+    </h3>
+  ),
+  hr: () => <hr className="my-4 border-border" />,
+  table: ({ children }) => (
+    <div className="my-3 overflow-x-auto rounded-md border border-border">
+      <table className="w-full border-collapse text-[13.5px]">{children}</table>
+    </div>
+  ),
+  thead: ({ children }) => (
+    <thead className="bg-surface text-left text-ink">{children}</thead>
+  ),
+  th: ({ children }) => (
+    <th className="border-b border-border px-3 py-2 font-medium">{children}</th>
+  ),
+  td: ({ children }) => (
+    <td className="border-b border-border/60 px-3 py-2 text-ink-dim last:border-b-0">
+      {children}
+    </td>
+  ),
+  code: ({ className, children, ...rest }) => {
+    const isBlock = /language-/.test(className ?? "");
+    if (isBlock) {
+      return <CodeBlock>{children}</CodeBlock>;
+    }
+    return (
+      <code
+        className="rounded bg-surface px-1.5 py-[1px] font-mono text-[13px] text-accent-hi"
+        {...rest}
+      >
+        {children}
+      </code>
+    );
+  },
+  pre: ({ children }) => <>{children}</>,
+};
+
 function Body({
   content,
   streaming,
@@ -65,33 +155,17 @@ function Body({
   content: string;
   streaming: boolean;
 }) {
-  const segments = toSegments(content);
   return (
-    <div className="space-y-3">
-      {segments.map((seg, i) => {
-        const isLast = i === segments.length - 1;
-        if (seg.kind === "code") {
-          return (
-            <pre
-              key={i}
-              className="overflow-x-auto rounded-md border border-border bg-bg px-3.5 py-3 font-mono text-[13px] leading-relaxed text-ink"
-            >
-              <code>{seg.value}</code>
-            </pre>
-          );
-        }
-        return (
-          <p
-            key={i}
-            className={[
-              "whitespace-pre-wrap break-words text-[15px] leading-[1.7]",
-              streaming && isLast ? "caret" : "",
-            ].join(" ")}
-          >
-            {seg.value}
-          </p>
-        );
-      })}
+    <div className={streaming ? "md-body streaming" : "md-body"}>
+      <ReactMarkdown remarkPlugins={[remarkGfm]} components={mdComponents}>
+        {content}
+      </ReactMarkdown>
+      {streaming && (
+        <span
+          aria-hidden
+          className="caret ml-0.5 inline-block align-[-0.16em]"
+        />
+      )}
     </div>
   );
 }
