@@ -115,6 +115,33 @@ pnpm test        # vitest (types + sdk)
 pnpm dev         # all apps in watch mode
 ```
 
+### Docker ops
+
+All commands assume `-f infra/docker-compose.yml` (omitted below for
+brevity — alias `dc='docker compose -f infra/docker-compose.yml'` if you
+run these often).
+
+```bash
+# Stack lifecycle
+dc up --build              # build images + start everything (foreground)
+dc up -d --build           # same, but detached
+dc down                    # stop, keep volumes (pg/redis/redpanda data persists)
+dc down -v                 # stop AND wipe data volumes — full reset
+
+# Targeted service ops
+dc up -d --build web       # rebuild + restart a single service
+dc up -d api               # restart api only (e.g. to reload .env keys)
+dc restart ingestion       # restart without rebuild
+dc up migrate              # re-run the one-shot DB migration container
+
+# Inspection
+dc ps                      # service status + health
+dc logs -f api             # tail logs for one service
+dc logs -f api ingestion   # multi-service tail
+dc exec api sh             # shell into a running container
+dc exec postgres psql -U helix helix   # psql into the DB
+```
+
 ---
 
 ## Architecture Overview
