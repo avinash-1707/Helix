@@ -6,15 +6,23 @@
 import { z } from "zod";
 import type { Provider } from "@helix/types";
 
+// Provider keys are optional. An empty string in .env (`OPENAI_API_KEY=`)
+// arrives as `""`, which would fail `.min(1)` — coerce blank → undefined
+// so a blank entry is treated as "not configured" rather than invalid.
+const optionalKey = z.preprocess(
+  (v) => (typeof v === "string" && v.trim() === "" ? undefined : v),
+  z.string().min(1).optional(),
+);
+
 const EnvSchema = z.object({
   DATABASE_URL: z.string().min(1),
   REDIS_URL: z.string().min(1),
   KAFKA_BROKERS: z.string().min(1),
   KAFKA_TOPIC_LOGS: z.string().min(1).default("llm.inference.logs"),
   API_PORT: z.coerce.number().int().positive().default(3001),
-  ANTHROPIC_API_KEY: z.string().min(1).optional(),
-  OPENAI_API_KEY: z.string().min(1).optional(),
-  GOOGLE_API_KEY: z.string().min(1).optional(),
+  ANTHROPIC_API_KEY: optionalKey,
+  OPENAI_API_KEY: optionalKey,
+  GOOGLE_API_KEY: optionalKey,
   // Number of trailing messages sent to the model per turn (architecture.md
   // "short conversational context window").
   CONTEXT_WINDOW_SIZE: z.coerce.number().int().positive().default(10),
