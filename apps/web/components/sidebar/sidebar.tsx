@@ -68,7 +68,7 @@ export function Sidebar({
       </div>
 
       {/* list */}
-      <div className="min-h-0 flex-1 overflow-y-auto px-3 pb-4">
+      <div className="scroll-quiet min-h-0 flex-1 overflow-y-auto px-3 pb-4">
         <p className="px-3 pb-1.5 pt-2 font-mono text-[10px] uppercase tracking-[0.16em] text-ink-faint">
           Conversations
         </p>

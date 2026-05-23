@@ -1,5 +1,7 @@
 // The Helix wordmark — a small twin-strand mark beside a serif logotype.
 
+import Link from "next/link";
+
 export function HelixMark({ className = "" }: { className?: string }) {
   return (
     <svg
@@ -32,11 +34,15 @@ export function HelixMark({ className = "" }: { className?: string }) {
 
 export function Brand() {
   return (
-    <div className="flex items-center gap-2.5">
-      <HelixMark className="h-6 w-6" />
+    <Link
+      href="/"
+      aria-label="Helix — back to home"
+      className="group flex items-center gap-2.5 rounded-md outline-none transition-opacity hover:opacity-90"
+    >
+      <HelixMark className="h-6 w-6 transition-transform duration-200 group-hover:scale-105" />
       <span className="font-display text-[26px] leading-none tracking-tight text-ink">
         Helix
       </span>
-    </div>
+    </Link>
   );
 }
