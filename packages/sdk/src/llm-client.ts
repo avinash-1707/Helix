@@ -19,6 +19,7 @@ import {
   AnthropicProvider,
   GeminiProvider,
   OpenAIProvider,
+  OpenRouterProvider,
   type ChatMessage,
   type LLMProvider,
 } from "./providers/index.js";
@@ -145,7 +146,9 @@ export class LLMClient {
         ? new AnthropicProvider(credentials.apiKey)
         : name === "openai"
           ? new OpenAIProvider(credentials.apiKey)
-          : new GeminiProvider(credentials.apiKey);
+          : name === "openrouter"
+            ? new OpenRouterProvider(credentials.apiKey)
+            : new GeminiProvider(credentials.apiKey);
     this.#providers.set(name, provider);
     return provider;
   }

@@ -50,6 +50,7 @@ export function ChatView({
 
   const conversation = detail.data?.conversation;
   const provider = conversation?.provider ?? "anthropic";
+  const model = conversation?.model;
   const archived = conversation?.status === "cancelled";
 
   // Cached history + the in-flight turn, merged for display.
@@ -110,6 +111,7 @@ export function ChatView({
         <MessageList
           messages={messages}
           provider={provider}
+          model={model}
           thinking={thinking}
         />
       )}

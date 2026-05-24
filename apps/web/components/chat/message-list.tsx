@@ -19,10 +19,12 @@ export type DisplayMessage = {
 export function MessageList({
   messages,
   provider,
+  model,
   thinking = false,
 }: {
   messages: DisplayMessage[];
   provider: string;
+  model?: string;
   thinking?: boolean;
 }) {
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -70,6 +72,7 @@ export function MessageList({
               role={m.role}
               content={m.content}
               provider={m.role === "assistant" ? provider : undefined}
+              model={m.role === "assistant" ? model : undefined}
               time={m.time}
               streaming={m.streaming}
             />

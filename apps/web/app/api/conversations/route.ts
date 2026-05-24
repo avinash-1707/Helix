@@ -10,7 +10,8 @@ import { gatewayUrl, relayJson, sessionId } from "@/lib/server";
 // The provider set is mirrored locally to keep this server route free of
 // a runtime import from the shared types package.
 const CreateBody = z.object({
-  provider: z.enum(["anthropic", "openai", "google"]),
+  provider: z.enum(["anthropic", "openai", "google", "openrouter"]),
+  model: z.string().trim().min(1).max(200).optional(),
   title: z.string().trim().min(1).max(200).optional(),
 });
 

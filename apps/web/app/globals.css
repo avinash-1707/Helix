@@ -30,6 +30,12 @@
   --color-claude: #e0894e;
   --color-gpt: #4ec9a8;
   --color-gemini: #6f9ce0;
+  --color-openrouter: #b58cff;
+  --color-deepseek: #5b8bff;
+  --color-grok: #d0d0d0;
+  --color-llama: #8b8bf5;
+  --color-mistral: #ff7e3b;
+  --color-qwen: #c965cc;
 
   --color-danger: #f06a5d;
   --color-positive: #4ec9a8;

@@ -174,12 +174,14 @@ export function MessageBubble({
   role,
   content,
   provider,
+  model,
   time,
   streaming = false,
 }: {
   role: MessageRole;
   content: string;
   provider?: string;
+  model?: string;
   time?: string;
   streaming?: boolean;
 }) {
@@ -212,11 +214,11 @@ export function MessageBubble({
   }
 
   // assistant
-  const name = provider ? modelInfo(provider).name : "Assistant";
+  const name = provider ? modelInfo(provider, model).name : "Assistant";
   return (
     <div className="anim-rise group flex flex-col items-start">
       <div className="mb-1.5 flex items-center gap-2">
-        {provider && <ModelDot provider={provider} />}
+        {provider && <ModelDot provider={provider} model={model} />}
         <span className="font-mono text-[11px] uppercase tracking-[0.14em] text-ink-dim">
           {name}
         </span>

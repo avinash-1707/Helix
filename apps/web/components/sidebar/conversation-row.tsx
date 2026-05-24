@@ -20,7 +20,7 @@ export function ConversationRow({
   onSelect: () => void;
 }) {
   const archived = conversation.status === "cancelled";
-  const { name } = modelInfo(conversation.provider);
+  const { name } = modelInfo(conversation.provider, conversation.model);
 
   return (
     <button
@@ -58,7 +58,11 @@ export function ConversationRow({
         </span>
       </div>
       <div className="mt-1 flex items-center gap-1.5">
-        <ModelDot provider={conversation.provider} size={6} />
+        <ModelDot
+          provider={conversation.provider}
+          model={conversation.model}
+          size={6}
+        />
         <span className="font-mono text-[10px] uppercase tracking-[0.12em] text-ink-faint">
           {name}
         </span>

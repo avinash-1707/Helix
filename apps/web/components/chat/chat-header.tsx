@@ -39,7 +39,10 @@ export function ChatHeader({
           {displayTitle(conversation.title)}
         </h1>
         <div className="mt-0.5 flex items-center gap-2">
-          <ModelBadge provider={conversation.provider} />
+          <ModelBadge
+            provider={conversation.provider}
+            model={conversation.model}
+          />
           {archived && (
             <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-ink-faint">
               · Archived

@@ -1,7 +1,7 @@
 import { z } from "zod";
 
 // LLM provider identifiers. Lowercase, used as DB values and wire values.
-export const ProviderSchema = z.enum(["anthropic", "openai", "google"]);
+export const ProviderSchema = z.enum(["anthropic", "openai", "google", "openrouter"]);
 export type Provider = z.infer<typeof ProviderSchema>;
 
 // Conversation lifecycle. Cancelled conversations are read-only, not deleted.

@@ -6,6 +6,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import type { Provider } from "@helix/types";
+import type { ModelSelection } from "@/lib/models";
 import {
   useConversations,
   useCreateConversation,
@@ -16,16 +17,47 @@ import { ChatView } from "./chat/chat-view";
 import { Welcome } from "./chat/welcome";
 
 // The model choice persists across reloads so it feels like a setting,
-// not a surprise reset.
+// not a surprise reset. Stored as JSON so both provider and the
+// optional openrouter sub-model survive.
 const MODEL_KEY = "helix:model";
 
 function isProvider(v: unknown): v is Provider {
-  return v === "anthropic" || v === "openai" || v === "google";
+  return (
+    v === "anthropic" ||
+    v === "openai" ||
+    v === "google" ||
+    v === "openrouter"
+  );
+}
+
+function parseSelection(raw: string | null): ModelSelection | null {
+  if (!raw) return null;
+  try {
+    const obj = JSON.parse(raw) as unknown;
+    if (
+      obj &&
+      typeof obj === "object" &&
+      "provider" in obj &&
+      isProvider((obj as { provider: unknown }).provider)
+    ) {
+      const provider = (obj as { provider: Provider }).provider;
+      const model = (obj as { model?: unknown }).model;
+      return {
+        provider,
+        model: typeof model === "string" && model.length > 0 ? model : undefined,
+      };
+    }
+  } catch {
+    /* malformed entry — drop it */
+  }
+  return null;
 }
 
 export function Workspace() {
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [draftModel, setDraftModel] = useState<Provider>("anthropic");
+  const [draftModel, setDraftModel] = useState<ModelSelection>({
+    provider: "anthropic",
+  });
   const [railOpen, setRailOpen] = useState(false);
   const [autoSend, setAutoSend] = useState<{ id: string; text: string } | null>(
     null,
@@ -37,17 +69,17 @@ export function Workspace() {
   // Restore the saved model after mount (avoids an SSR mismatch).
   useEffect(() => {
     try {
-      const saved = localStorage.getItem(MODEL_KEY);
-      if (isProvider(saved)) setDraftModel(saved);
+      const saved = parseSelection(localStorage.getItem(MODEL_KEY));
+      if (saved) setDraftModel(saved);
     } catch {
       /* storage unavailable — keep the default */
     }
   }, []);
 
-  const changeModel = useCallback((next: Provider) => {
+  const changeModel = useCallback((next: ModelSelection) => {
     setDraftModel(next);
     try {
-      localStorage.setItem(MODEL_KEY, next);
+      localStorage.setItem(MODEL_KEY, JSON.stringify(next));
     } catch {
       /* storage unavailable — selection still applies this session */
     }
@@ -68,7 +100,8 @@ export function Workspace() {
     async (text: string): Promise<boolean> => {
       try {
         const conversation = await createConversation.mutateAsync({
-          provider: draftModel,
+          provider: draftModel.provider,
+          model: draftModel.model,
           title: titleFromText(text),
         });
         setAutoSend({ id: conversation.id, text });

@@ -4,8 +4,7 @@
 // message — the conversation is created the moment it's sent.
 
 import { Menu } from "lucide-react";
-import type { Provider } from "@helix/types";
-import { MODELS } from "@/lib/models";
+import { modelInfo, type ModelSelection } from "@/lib/models";
 import { ModelPicker } from "../model";
 import { Composer } from "./composer";
 
@@ -22,12 +21,13 @@ export function Welcome({
   starting,
   onOpenRail,
 }: {
-  model: Provider;
-  onModelChange: (next: Provider) => void;
+  model: ModelSelection;
+  onModelChange: (next: ModelSelection) => void;
   onStart: (text: string) => Promise<boolean>;
   starting: boolean;
   onOpenRail: () => void;
 }) {
+  const display = modelInfo(model.provider, model.model);
   return (
     <div className="flex h-full flex-col">
       {/* mobile-only bar to reach the rail */}
@@ -83,7 +83,7 @@ export function Welcome({
               onSend={onStart}
               busy={starting}
               autoFocus
-              placeholder={`Message ${MODELS[model].name}…`}
+              placeholder={`Message ${display.name}…`}
             />
           </div>
 

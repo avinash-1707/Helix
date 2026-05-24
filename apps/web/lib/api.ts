@@ -81,6 +81,7 @@ export async function fetchConversation(
 /** Creates a conversation bound to a model. Returns the new row. */
 export async function createConversation(input: {
   provider: Provider;
+  model?: string;
   title?: string;
 }): Promise<ConversationView> {
   let res: Response;

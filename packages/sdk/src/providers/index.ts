@@ -1,9 +1,10 @@
-// One file per provider: anthropic.ts, openai.ts, gemini.ts.
+// One file per provider: anthropic.ts, openai.ts, gemini.ts, openrouter.ts.
 // Each implements the shared LLMProvider contract used by LLMClient.
 
 export { AnthropicProvider } from "./anthropic.js";
 export { OpenAIProvider } from "./openai.js";
 export { GeminiProvider } from "./gemini.js";
+export { OpenRouterProvider } from "./openrouter.js";
 export type {
   ChatMessage,
   LLMProvider,

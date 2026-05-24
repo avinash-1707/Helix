@@ -23,6 +23,7 @@ const EnvSchema = z.object({
   ANTHROPIC_API_KEY: optionalKey,
   OPENAI_API_KEY: optionalKey,
   GOOGLE_API_KEY: optionalKey,
+  OPENROUTER_API_KEY: optionalKey,
   // Number of trailing messages sent to the model per turn (architecture.md
   // "short conversational context window").
   CONTEXT_WINDOW_SIZE: z.coerce.number().int().positive().default(10),
@@ -60,6 +61,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): ApiConfig {
   if (e.ANTHROPIC_API_KEY) providerKeys.anthropic = e.ANTHROPIC_API_KEY;
   if (e.OPENAI_API_KEY) providerKeys.openai = e.OPENAI_API_KEY;
   if (e.GOOGLE_API_KEY) providerKeys.google = e.GOOGLE_API_KEY;
+  if (e.OPENROUTER_API_KEY) providerKeys.openrouter = e.OPENROUTER_API_KEY;
 
   return {
     databaseUrl: e.DATABASE_URL,

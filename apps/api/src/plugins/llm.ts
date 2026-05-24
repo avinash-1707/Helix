@@ -19,6 +19,9 @@ export const llmPlugin = fp(async (app) => {
   if (cfg.providerKeys.google) {
     providers.google = { apiKey: cfg.providerKeys.google };
   }
+  if (cfg.providerKeys.openrouter) {
+    providers.openrouter = { apiKey: cfg.providerKeys.openrouter };
+  }
 
   const client = new LLMClient({
     providers,

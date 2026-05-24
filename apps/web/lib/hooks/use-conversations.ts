@@ -43,8 +43,11 @@ export function useConversation(
 export function useCreateConversation() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (input: { provider: Provider; title?: string }) =>
-      createConversation(input),
+    mutationFn: (input: {
+      provider: Provider;
+      model?: string;
+      title?: string;
+    }) => createConversation(input),
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: conversationsKey });
     },
