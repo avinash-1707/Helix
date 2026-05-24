@@ -1,9 +1,10 @@
 # Helix
 
 Full-stack observability platform for LLM-powered applications. Helix wraps
-multi-provider LLM calls (Anthropic, OpenAI, Google) in a lightweight SDK,
-captures inference metadata — latency, token usage, errors, session IDs —
-and ships it asynchronously to an ingestion pipeline backed by PostgreSQL.
+multi-provider LLM calls (Anthropic, OpenAI, Google, and 300+ models via
+OpenRouter) in a lightweight SDK, captures inference metadata — latency,
+token usage, errors, session IDs — and ships it asynchronously to an
+ingestion pipeline backed by PostgreSQL.
 A Next.js chatbot UI demonstrates the SDK; Grafana dashboards expose
 real-time latency, throughput, and error metrics.
 
@@ -41,9 +42,12 @@ adding latency to the user-facing response path**.
 # 1. Create the env file (provider keys are optional)
 cp .env.example .env
 #    then edit .env and set the keys you have:
-#      ANTHROPIC_API_KEY=...   OPENAI_API_KEY=...   GOOGLE_API_KEY=...
-#    GOOGLE_API_KEY is the Gemini key. A provider with no key just
-#    cannot be selected for a conversation.
+#      ANTHROPIC_API_KEY=...   OPENAI_API_KEY=...
+#      GOOGLE_API_KEY=...      OPENROUTER_API_KEY=...
+#    GOOGLE_API_KEY is the Gemini key. OPENROUTER_API_KEY unlocks the
+#    "More models" dropdown (DeepSeek, Grok, Llama, Mistral, Qwen, …).
+#    A provider with no key simply cannot be selected for a conversation
+#    — the UI surfaces a friendly 503 error if you try.
 
 # 2. Build and start the full stack
 docker compose -f infra/docker-compose.yml up --build
@@ -156,7 +160,7 @@ packages.
 │   ├── api/         # Fastify API gateway — conversation CRUD, SSE
 │   └── ingestion/   # Kafka consumer + PostgreSQL writer
 ├── packages/
-│   ├── sdk/         # Unified multi-provider LLM client + redaction
+│   ├── sdk/         # Unified LLM client (Anthropic, OpenAI, Gemini, OpenRouter) + redaction
 │   ├── db/          # Drizzle ORM schema + TimescaleDB hypertable SQL
 │   └── types/       # Shared Zod schemas + inferred TypeScript types
 └── infra/
@@ -191,7 +195,11 @@ consumes and persists out-of-band. A broker outage never blocks a reply.
 - **`apps/ingestion`** — the only writer of `inference_logs`. Consumes
   Kafka, validates, redacts, persists. Serves no HTTP to the frontend.
 - **`packages/sdk`** — pure TypeScript, no HTTP layer. One file per
-  provider behind a single `LLMClient` interface.
+  provider behind a single `LLMClient` interface. Four providers:
+  Anthropic, OpenAI, Gemini (direct SDKs), and OpenRouter (reuses the
+  `openai` SDK against `openrouter.ai/api/v1` — one key, 300+ models).
+  `hasProvider(name)` lets callers refuse a request up-front when a
+  key is missing.
 - **`packages/db`** — Drizzle schema (source of truth) + the one piece of
   hand-written SQL (hypertable conversion).
 - **`packages/types`** — Zod schemas shared everywhere; no duplicated
@@ -316,7 +324,13 @@ Grafana reflects new calls within seconds of the DB write.
   response.*
 - **LLM provider error** → the SDK still emits a log event with
   `status: 'error'` and an `error_code`, then propagates the error to the
-  gateway, which returns `502` to the frontend.
+  gateway, which writes an SSE `error` frame (carrying the SDK message)
+  before closing the stream.
+- **Provider has no API key configured** → the gateway refuses
+  *before* hijacking the SSE response, returning
+  `503 { error: { code: "provider_not_configured", message } }`. The
+  client surfaces a friendly "This model isn't available on the server
+  right now" message instead of a silent stream close.
 - **Conversation cancelled** → the gateway closes the SSE stream and sets
   `status='cancelled'`. Partial assistant output is persisted; the SDK
   emits a `cancelled` log event. Cancel never deletes — a cancelled

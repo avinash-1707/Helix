@@ -132,6 +132,13 @@ export class LLMClient {
     await this.#emitter.close();
   }
 
+  // True when the provider has credentials configured. Callers should
+  // check this before hijacking an SSE response so a missing key fails
+  // with a real HTTP status, not a silent stream close.
+  hasProvider(name: Provider): boolean {
+    return this.#config.providers[name] !== undefined;
+  }
+
   #providerFor(name: Provider): LLMProvider {
     const cached = this.#providers.get(name);
     if (cached) return cached;

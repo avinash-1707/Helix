@@ -65,7 +65,7 @@ export function Welcome({
           </p>
 
           <div
-            className="anim-rise mt-8"
+            className="anim-rise relative z-30 mt-8"
             style={{ animationDelay: "180ms" }}
           >
             <ModelPicker

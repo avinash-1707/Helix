@@ -60,6 +60,18 @@ export async function messageRoutes(app: FastifyInstance): Promise<void> {
       });
     }
 
+    // Refuse early — before hijack — if the provider has no API key on the
+    // server. Otherwise the SDK throws mid-stream and the client only sees
+    // a generic "stream failed" with no actionable info.
+    if (!app.llm.hasProvider(conversation.provider)) {
+      return reply.code(503).send({
+        error: {
+          code: "provider_not_configured",
+          message: `No API key configured for ${conversation.provider}. Set the server env var and retry.`,
+        },
+      });
+    }
+
     // Persist the user turn (redacted) before streaming so it survives a
     // mid-stream disconnect.
     await addMessage(app.db, conversationId, "user", body.data.content);
@@ -127,10 +139,9 @@ export async function messageRoutes(app: FastifyInstance): Promise<void> {
       }
     } catch (err) {
       app.log.error({ err, conversationId }, "LLM stream failed");
-      write("error", {
-        code: "llm_error",
-        message: "The model request failed.",
-      });
+      const message =
+        err instanceof Error && err.message ? err.message : "The model request failed.";
+      write("error", { code: "llm_error", message });
     }
 
     // Persist the assistant turn (partial output on cancel/error is still

@@ -134,12 +134,14 @@ export function useChatStream(conversationId: string | null): ChatStream {
         return false;
       }
 
-      // Rejected before streaming (archived, rate-limited, invalid).
+      // Rejected before streaming (archived, rate-limited, invalid,
+      // missing provider key). Try to pull a structured error from the
+      // body — describeStatus is the fallback when there is no envelope.
       if (!res.ok || !res.body) {
         abortRef.current = null;
         setTurn(null);
         setPhase("idle");
-        setError(describeStatus(res.status));
+        setError(await describeRejection(res));
         return false;
       }
 
@@ -155,11 +157,17 @@ export function useChatStream(conversationId: string | null): ChatStream {
             replyRef.current += chunk;
             setTurn({ userText: text, replyText: replyRef.current });
           } else if (frame.event === "error") {
-            const { code } = JSON.parse(frame.data) as { code?: string };
-            streamError =
-              code === "llm_timeout"
-                ? "The reply timed out. Please try sending it again."
-                : "The reply couldn't be completed. Please try again.";
+            const { code, message } = JSON.parse(frame.data) as {
+              code?: string;
+              message?: string;
+            };
+            if (code === "llm_timeout") {
+              streamError = "The reply timed out. Please try sending it again.";
+            } else if (message && /api key|not configured|unauthorized|401/i.test(message)) {
+              streamError = `This model isn't available right now: ${message}`;
+            } else {
+              streamError = "The reply couldn't be completed. Please try again.";
+            }
           } else if (frame.event === "done") {
             const { messageId } = JSON.parse(frame.data) as {
               messageId: string | null;
@@ -196,12 +204,33 @@ export function useChatStream(conversationId: string | null): ChatStream {
   };
 }
 
+async function describeRejection(res: Response): Promise<string> {
+  // Try the gateway's `{ error: { code, message } }` envelope first — it
+  // carries actionable detail (e.g. which provider has no key).
+  try {
+    const body = (await res.clone().json()) as {
+      error?: { code?: string; message?: string };
+    };
+    const err = body.error;
+    if (err?.code === "provider_not_configured") {
+      return err.message ?? "This model isn't configured on the server.";
+    }
+    if (err?.message) return err.message;
+  } catch {
+    /* not JSON — fall through to status-based wording */
+  }
+  return describeStatus(res.status);
+}
+
 function describeStatus(status: number): string {
   if (status === 429) {
     return "You're sending messages a little fast. Give it a moment.";
   }
   if (status === 409) {
     return "This conversation is archived and can no longer take messages.";
+  }
+  if (status === 503) {
+    return "This model isn't available on the server right now.";
   }
   return "That message couldn't be sent. Please try again.";
 }

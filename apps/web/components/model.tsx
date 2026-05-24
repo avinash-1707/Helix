@@ -234,7 +234,7 @@ function MoreModelsMenu({
         <ul
           role="listbox"
           aria-label="More models"
-          className="absolute z-20 mt-1.5 max-h-72 w-full overflow-y-auto rounded-md border border-border bg-bg-elev p-1 shadow-2xl"
+          className="absolute z-50 mt-1.5 max-h-72 w-full overflow-y-auto rounded-md border border-border bg-bg-elev p-1 shadow-2xl"
         >
           {EXTRA_MODELS.map((m) => {
             const selected = m.model === value.model;
