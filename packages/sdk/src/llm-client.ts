@@ -36,8 +36,19 @@ export type LLMClientConfig = {
   defaultMaxTokens?: number;
 };
 
+// Sentinel reasons the caller can pass to `controller.abort(reason)`.
+// The SDK uses them to classify the inference log row — a user-initiated
+// stop is `cancelled`; a server-side timeout is `error` with
+// `errorCode: "llm_timeout"`. Any other abort reason (or none) is
+// treated as `cancelled`.
+export const ABORT_TIMEOUT = "timeout";
+export const ABORT_CLIENT_CLOSED = "client_closed";
+
 // One LLM call. `messages` is the full context window the caller has
 // already assembled (system + prior turns + the new user turn).
+// `signal`, when aborted, propagates into the provider SDK so the
+// upstream HTTPS request is torn down — not just the local for-await
+// loop. Provide it for any call you want to be cancellable.
 export type LLMRequest = {
   provider: Provider;
   model: string;
@@ -45,6 +56,7 @@ export type LLMRequest = {
   conversationId: string | null;
   messageId: string | null;
   maxTokens?: number;
+  signal?: AbortSignal;
 };
 
 export class LLMClient {
@@ -76,12 +88,14 @@ export class LLMClient {
     // overrides it, so a caller that breaks early is recorded correctly.
     let status: InferenceStatus = "cancelled";
     let errorCode: string | null = null;
+    let emitted = false;
 
     try {
       for await (const chunk of provider.stream({
         model: req.model,
         messages: req.messages,
         maxTokens,
+        signal: req.signal,
       })) {
         if (chunk.type === "text") {
           if (firstTokenMs === null) {
@@ -96,8 +110,21 @@ export class LLMClient {
       }
       status = "success";
     } catch (err: unknown) {
-      status = "error";
-      errorCode = toErrorCode(err);
+      // An aborted signal reclassifies the throw: a timeout is a real
+      // server-side error; anything else (client disconnect, manual
+      // abort) is a user-initiated cancel.
+      if (req.signal?.aborted) {
+        if (req.signal.reason === ABORT_TIMEOUT) {
+          status = "error";
+          errorCode = "llm_timeout";
+        } else {
+          status = "cancelled";
+          errorCode = null;
+        }
+      } else {
+        status = "error";
+        errorCode = toErrorCode(err);
+      }
       this.#emit(req, {
         requestAt,
         startedAt,
@@ -108,11 +135,12 @@ export class LLMClient {
         status,
         errorCode,
       });
+      emitted = true;
       throw err;
     } finally {
       // Reached on clean end AND on early-cancel; skipped only when the
       // catch block already emitted. Guarantees one event per call.
-      if (status !== "error") {
+      if (!emitted) {
         this.#emit(req, {
           requestAt,
           startedAt,

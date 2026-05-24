@@ -39,6 +39,7 @@ export class GeminiProvider implements LLMProvider {
         ...(systemParts.length > 0
           ? { systemInstruction: systemParts.join("\n\n") }
           : {}),
+        ...(req.signal ? { abortSignal: req.signal } : {}),
       },
     });
 

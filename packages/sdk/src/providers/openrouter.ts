@@ -39,13 +39,16 @@ export class OpenRouterProvider implements LLMProvider {
     let promptTokens: number | null = null;
     let completionTokens: number | null = null;
 
-    const stream = await this.#client.chat.completions.create({
-      model: req.model,
-      messages: req.messages.map(toOpenAIMessage),
-      max_tokens: req.maxTokens,
-      stream: true,
-      stream_options: { include_usage: true },
-    });
+    const stream = await this.#client.chat.completions.create(
+      {
+        model: req.model,
+        messages: req.messages.map(toOpenAIMessage),
+        max_tokens: req.maxTokens,
+        stream: true,
+        stream_options: { include_usage: true },
+      },
+      req.signal ? { signal: req.signal } : undefined,
+    );
 
     for await (const chunk of stream) {
       const delta = chunk.choices[0]?.delta?.content;

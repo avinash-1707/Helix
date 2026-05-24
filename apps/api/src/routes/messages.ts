@@ -14,7 +14,11 @@
 
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
-import type { ChatMessage } from "@helix/sdk";
+import {
+  ABORT_CLIENT_CLOSED,
+  ABORT_TIMEOUT,
+  type ChatMessage,
+} from "@helix/sdk";
 import {
   getConversation,
   getMessages,
@@ -99,10 +103,23 @@ export async function messageRoutes(app: FastifyInstance): Promise<void> {
       "X-Accel-Buffering": "no",
     });
 
+    // One controller drives upstream cancellation for both reasons we
+    // care about: the browser disconnected, or the server-side deadline
+    // elapsed. Aborting tears down the provider HTTPS request so we stop
+    // generating (and billing) tokens — not just forwarding them.
+    const controller = new AbortController();
     let clientGone = false;
+    let timedOut = false;
+
     req.raw.on("close", () => {
       clientGone = true;
+      if (!controller.signal.aborted) controller.abort(ABORT_CLIENT_CLOSED);
     });
+
+    const timeoutId = setTimeout(() => {
+      timedOut = true;
+      controller.abort(ABORT_TIMEOUT);
+    }, app.config.llmRequestTimeoutMs);
 
     const write = (event: string, data: unknown): void => {
       if (clientGone) return;
@@ -114,7 +131,6 @@ export async function messageRoutes(app: FastifyInstance): Promise<void> {
     };
 
     let assistantText = "";
-    const deadline = Date.now() + app.config.llmRequestTimeoutMs;
     try {
       const stream = app.llm.stream({
         provider: conversation.provider,
@@ -122,26 +138,32 @@ export async function messageRoutes(app: FastifyInstance): Promise<void> {
         messages: windowed,
         conversationId,
         messageId: null,
+        signal: controller.signal,
       });
       for await (const token of stream) {
-        // Stopping iteration here triggers the SDK's cancel path, which
-        // emits the log event with status 'cancelled'.
-        if (clientGone) break;
-        if (Date.now() > deadline) {
-          write("error", {
-            code: "llm_timeout",
-            message: "The model response timed out.",
-          });
-          break;
-        }
         assistantText += token;
         write("token", { text: token });
       }
     } catch (err) {
-      app.log.error({ err, conversationId }, "LLM stream failed");
-      const message =
-        err instanceof Error && err.message ? err.message : "The model request failed.";
-      write("error", { code: "llm_error", message });
+      // A client-close abort is expected — the browser is already gone,
+      // so writing an error frame is moot (it would no-op anyway). A
+      // timeout is a real failure we want surfaced. Anything else is a
+      // genuine provider/SDK error.
+      if (timedOut) {
+        write("error", {
+          code: "llm_timeout",
+          message: "The model response timed out.",
+        });
+      } else if (!clientGone) {
+        app.log.error({ err, conversationId }, "LLM stream failed");
+        const message =
+          err instanceof Error && err.message
+            ? err.message
+            : "The model request failed.";
+        write("error", { code: "llm_error", message });
+      }
+    } finally {
+      clearTimeout(timeoutId);
     }
 
     // Persist the assistant turn (partial output on cancel/error is still

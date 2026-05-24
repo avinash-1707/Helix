@@ -24,10 +24,14 @@ export type ProviderStreamChunk =
 
 // Provider-level request. System messages are part of `messages`;
 // each provider extracts them into its own system-prompt slot.
+// `signal` aborts the upstream HTTP request when fired — providers
+// must forward it to their native SDK so cancellation tears down the
+// real connection, not just the local for-await loop.
 export type ProviderRequest = {
   model: string;
   messages: ChatMessage[];
   maxTokens: number;
+  signal?: AbortSignal;
 };
 
 // The contract LLMClient depends on. Implementations live one-per-file

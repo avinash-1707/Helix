@@ -27,12 +27,15 @@ export class AnthropicProvider implements LLMProvider {
     let promptTokens: number | null = null;
     let completionTokens: number | null = null;
 
-    const stream = this.#client.messages.stream({
-      model: req.model,
-      max_tokens: req.maxTokens,
-      messages,
-      ...(systemParts.length > 0 ? { system: systemParts.join("\n\n") } : {}),
-    });
+    const stream = this.#client.messages.stream(
+      {
+        model: req.model,
+        max_tokens: req.maxTokens,
+        messages,
+        ...(systemParts.length > 0 ? { system: systemParts.join("\n\n") } : {}),
+      },
+      req.signal ? { signal: req.signal } : undefined,
+    );
 
     for await (const event of stream) {
       if (event.type === "message_start") {
