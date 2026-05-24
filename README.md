@@ -15,6 +15,8 @@ adding latency to the user-facing response path**.
 
 ## Table of Contents
 
+- [Assignment Coverage](#assignment-coverage)
+- [Demo](#demo)
 - [Setup](#setup)
 - [Architecture Overview](#architecture-overview)
 - [Schema Design Decisions](#schema-design-decisions)
@@ -25,6 +27,49 @@ adding latency to the user-facing response path**.
   - [Failure Handling Assumptions](#failure-handling-assumptions)
 - [Tradeoffs Made](#tradeoffs-made)
 - [What I Would Improve With More Time](#what-i-would-improve-with-more-time)
+
+---
+
+## Assignment Coverage
+
+### Core Requirements
+
+| Requirement                           | Where it lives                                                       |
+| ------------------------------------- | -------------------------------------------------------------------- |
+| Chatbot — multi-turn conversation     | `apps/web` chat UI; `apps/api` SSE route `/conversations/:id/messages` |
+| Chatbot — short conversational context| Redis `ctx:{conversation_id}`, trailing `CONTEXT_WINDOW_SIZE` (10) msgs |
+| Chatbot — simple UI                   | Next.js 16 chat at `/chat`; landing at `/`                          |
+| SDK / wrapper around LLM calls        | `packages/sdk` — unified `LLMClient` over four providers            |
+| Inference metadata capture            | `LLMCallMetadata` (provider, model, latency, tokens, status, session ids, previews, timestamps) |
+| Near real-time log shipping           | SDK → Redpanda topic `llm.inference.logs` (fire-and-forget)          |
+| Ingestion service                     | `apps/ingestion` Kafka consumer                                     |
+| Payload validation / parsing          | Zod `KafkaLogPayloadSchema` at the consumer boundary                |
+| Metadata extraction                   | Envelope split + PII redaction layer in `processMessage`            |
+| Database storage — chat messages      | `messages` table                                                    |
+| Database storage — inference logs     | `inference_logs` TimescaleDB hypertable                             |
+| Database storage — extracted metadata | Columns on `inference_logs` (tokens, latency, first_token_ms, …)    |
+
+### Bonus Items
+
+| Bonus                                  | Status | Notes                                                              |
+| -------------------------------------- | ------ | ------------------------------------------------------------------ |
+| Multi-provider support                 | Done   | Anthropic, OpenAI, Gemini + OpenRouter (300+ models via one key)   |
+| Streaming responses                    | Done   | SSE end-to-end; SDK stream interception measures `firstTokenMs`    |
+| Latency + throughput + error dashboards| Done   | Grafana — Overview (Prometheus) + per-provider / per-conversation (Postgres) |
+| Docker Compose one-command setup       | Done   | `docker compose -f infra/docker-compose.yml up --build`            |
+| Event-based architecture               | Done   | Redpanda (Kafka-compatible) topic `llm.inference.logs` + DLQ       |
+| PII redaction                          | Done   | Two layers — SDK before emit, ingestion before DB write            |
+| Self-hosted k8s deploy                 | Charts ready | Helm charts under `infra/k8s/` per service; not yet applied to a live cluster |
+| Frontend — cancel a conversation       | Done   | "Archive" in the UI; `POST /conversations/:id/cancel` + client-disconnect abort |
+| Frontend — list conversations          | Done   | Sidebar rail (`components/sidebar/`) — TanStack Query cached        |
+| Frontend — resume a conversation       | Done   | Click any row; full history restored from DB                       |
+
+---
+
+## Demo
+
+- **Hosted link**: not deployed in this submission — k8s charts exist but are not applied. Run locally via the one-command Docker setup below.
+- **Screenshots / Loom**: drop assets into `docs/demo/` (gitignored) and link them here before sharing the repo.
 
 ---
 
