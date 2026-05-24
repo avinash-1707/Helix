@@ -68,8 +68,7 @@ adding latency to the user-facing response path**.
 
 ## Demo
 
-- **Hosted link**: not deployed in this submission — k8s charts exist but are not applied. Run locally via the one-command Docker setup below.
-- **Screenshots / Loom**: drop assets into `docs/demo/` (gitignored) and link them here before sharing the repo.
+No hosted link or recorded walkthrough — provider API keys not available at submission time. Stack runs end-to-end locally via the one-command Docker setup below; supply any one of `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, `GOOGLE_API_KEY`, or `OPENROUTER_API_KEY` in `.env` to exercise the full flow (chat → SDK → Kafka → ingestion → Postgres → Grafana).
 
 ---
 
